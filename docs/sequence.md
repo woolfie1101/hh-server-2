@@ -1,6 +1,25 @@
 # 📌 시퀀스 다이어그램: 콘서트 예약 서비스
 
-## 🎟️ 1. 좌석 예약 흐름
+## 0. 로그인 흐름
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API
+    participant AuthService
+    participant DB
+
+    User->>API: 로그인 요청 (email, password)
+    API->>AuthService: 로그인 요청 위임
+    AuthService->>DB: 사용자 정보 조회
+    DB-->>AuthService: 비밀번호 해시 비교
+    AuthService-->>API: JWT 토큰 응답
+    API-->>User: 로그인 성공 + 토큰 반환
+```
+
+---
+
+## 1. 좌석 예약 흐름
 
 ```mermaid
 sequenceDiagram
@@ -49,7 +68,7 @@ sequenceDiagram
 
 ---
 
-## ❌ 2. 예약 취소 흐름
+## 2. 예약 취소 흐름
 
 ```mermaid
 sequenceDiagram
@@ -69,7 +88,7 @@ sequenceDiagram
 
 ---
 
-## ⏱ 3. 결제 실패 또는 임시 예약 만료 흐름
+## 3. 결제 실패 또는 임시 예약 만료 흐름
 
 ```mermaid
 sequenceDiagram
