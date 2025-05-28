@@ -1,13 +1,17 @@
-## 프로젝트
+# 🎟 콘서트 예약 서비스
 
-## Getting Started
+이 프로젝트는 대기열 기반의 콘서트 좌석 예약 시스템입니다.  
+요구사항 분석부터 설계, 구현, 고도화까지 전 과정을 문서화하고 단계적으로 개발해나갑니다.
 
-### Prerequisites
+---
 
-#### Running Docker Containers
+## 📂 문서 목록
 
-`local` profile 로 실행하기 위하여 인프라가 설정되어 있는 Docker 컨테이너를 실행해주셔야 합니다.
-
-```bash
-docker-compose up -d
-```
+| 문서 | 설명 |
+|------|------|
+| [📌 요구사항 정리](./docs/requirements.md) | 전체 기능 요구사항 및 제약사항 명세 |
+| [📆 프로젝트 마일스톤](./docs/milestones.md) | 2~5주차 구현 목표를 주차별로 정리 |
+| [📐 시퀀스 다이어그램](./docs/sequence.md) | 주요 유저 흐름 및 API 호출 시나리오 |
+| [🗂 ERD](./docs/erd.md) | 데이터베이스 설계도 및 관계 설명 |
+| [🏗 도메인 모델 설계](./docs/domain.md) | 객체지향 기반 도메인 책임 및 구조 정리 |
+| [🧱 인프라 구성도](./docs/infrastructure.md) | 전체 인프라 구성 + Redis, Kafka 등 구성요소 설명 |
