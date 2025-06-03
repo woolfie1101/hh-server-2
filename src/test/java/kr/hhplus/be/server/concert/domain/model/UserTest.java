@@ -84,4 +84,31 @@ class UserTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("충전 금액은 양수여야 합니다.");
     }
+
+    @Test
+    void null_값으로_사용_시_예외_발생_테스트() {
+        // given
+        User user = new User("user-123", "김철수", BigDecimal.valueOf(10000));
+
+        // when & then
+        assertThatThrownBy(() -> user.useBalance(null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("사용 금액은 양수여야 합니다.");
+    }
+
+    @Test
+    void 유효하지_않은_초기값으로_생성_시_예외_발생_테스트() {
+        // when & then
+        assertThatThrownBy(() -> new User("", "김철수", BigDecimal.valueOf(1000)))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("UUID는 필수입니다.");
+
+        assertThatThrownBy(() -> new User("user-123", "", BigDecimal.valueOf(1000)))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("이름은 필수입니다.");
+
+        assertThatThrownBy(() -> new User("user-123", "김철수", BigDecimal.valueOf(-1000)))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("초기 잔액은 0 이상이어야 합니다.");
+    }
 }

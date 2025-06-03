@@ -31,9 +31,7 @@ public class User {
      * 잔액 충전
      */
     public void chargeBalance(BigDecimal amount) {
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("충전 금액은 양수여야 합니다.");
-        }
+        validateAmount(amount, "충전 금액");
         this.balance = this.balance.add(amount);
     }
 
@@ -43,6 +41,8 @@ public class User {
      * @return 사용 성공 여부
      */
     public boolean useBalance(BigDecimal amount) {
+        validateAmount(amount, "사용 금액");
+
         if (!hasEnoughBalance(amount)) {
             return false;
         }
@@ -98,6 +98,12 @@ public class User {
     private void validateBalance(BigDecimal balance) {
         if (balance == null || balance.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("초기 잔액은 0 이상이어야 합니다.");
+        }
+    }
+
+    private void validateAmount(BigDecimal amount, String fieldName) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException(fieldName + "은 양수여야 합니다.");
         }
     }
 
