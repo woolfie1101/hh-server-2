@@ -42,6 +42,9 @@ public class Seat {
     public boolean reserve(String userId) {
         validateUserId(userId);
 
+        // 만료된 예약이 있다면 먼저 해제
+        releaseExpiredReservation();
+
         if (!isAvailable()) {
             return false;
         }
@@ -70,6 +73,8 @@ public class Seat {
      * 좌석이 예약 가능한지 확인
      */
     public boolean isAvailable() {
+        // 만료된 예약이 있다면 자동으로 해제하고 사용 가능으로 처리
+        releaseExpiredReservation();
         return reservedBy == null;
     }
 
@@ -111,6 +116,40 @@ public class Seat {
             this.reservedBy = null;
             this.reservedAt = null;
         }
+    }
+
+    /**
+     * 예약 남은 시간 (분 단위)
+     */
+    public long getRemainingMinutes() {
+        if (reservedAt == null) {
+            return 0;
+        }
+
+        LocalDateTime expirationTime = getReservationExpirationTime();
+        LocalDateTime now = LocalDateTime.now();
+
+        if (now.isAfter(expirationTime)) {
+            return 0;
+        }
+
+        return java.time.Duration.between(now, expirationTime).toMinutes();
+    }
+
+    /**
+     * 좌석 상태 요약 정보
+     */
+    public String getStatusSummary() {
+        if (isAvailable()) {
+            return "예약 가능";
+        }
+
+        if (isReservationExpired()) {
+            return "예약 만료 (자동 해제됨)";
+        }
+
+        long remainingMinutes = getRemainingMinutes();
+        return String.format("예약됨 (남은 시간: %d분)", remainingMinutes);
     }
 
     // ID 할당 (Repository에서 사용)

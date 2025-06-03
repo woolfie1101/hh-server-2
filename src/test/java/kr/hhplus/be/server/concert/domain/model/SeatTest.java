@@ -173,4 +173,44 @@ class SeatTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("사용자 ID는 필수입니다.");
     }
+
+    @Test
+    void 예약_남은_시간_확인_테스트() {
+        // given
+        Seat seat = new Seat(1L, "A-15", BigDecimal.valueOf(150000));
+
+        // when & then
+        assertThat(seat.getRemainingMinutes()).isEqualTo(0); // 예약 안된 상태
+
+        seat.reserve("user-123");
+        assertThat(seat.getRemainingMinutes()).isGreaterThan(4); // 5분 미만으로 남음
+        assertThat(seat.getRemainingMinutes()).isLessThanOrEqualTo(5);
+    }
+
+    @Test
+    void 좌석_상태_요약_정보_테스트() {
+        // given
+        Seat seat = new Seat(1L, "A-15", BigDecimal.valueOf(150000));
+
+        // when & then
+        assertThat(seat.getStatusSummary()).isEqualTo("예약 가능");
+
+        seat.reserve("user-123");
+        assertThat(seat.getStatusSummary()).contains("예약됨");
+        assertThat(seat.getStatusSummary()).contains("남은 시간");
+    }
+
+    @Test
+    void 자동_만료_해제_기능_테스트() {
+        // given
+        Seat seat = new Seat(1L, "A-15", BigDecimal.valueOf(150000));
+        seat.reserve("user-123");
+
+        // when
+        seat.releaseExpiredReservation(); // 아직 만료되지 않았으므로 해제되지 않음
+
+        // then
+        assertThat(seat.isAvailable()).isFalse();
+        assertThat(seat.getReservedBy()).isEqualTo("user-123");
+    }
 }
