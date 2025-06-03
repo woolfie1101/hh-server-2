@@ -37,6 +37,8 @@ public class Concert {
      * @return 예약 성공 여부
      */
     public boolean reserveSeat() {
+        validateConcertNotPassed();
+
         if (!hasAvailableSeats()) {
             return false;
         }
@@ -48,6 +50,8 @@ public class Concert {
      * 예약 취소
      */
     public void cancelReservation() {
+        validateConcertNotPassed();
+
         if (reservedSeats <= 0) {
             throw new IllegalArgumentException("취소할 예약이 없습니다.");
         }
@@ -66,6 +70,27 @@ public class Concert {
      */
     public int getAvailableSeats() {
         return totalSeats - reservedSeats;
+    }
+
+    /**
+     * 콘서트가 매진되었는지 확인
+     */
+    public boolean isSoldOut() {
+        return !hasAvailableSeats();
+    }
+
+    /**
+     * 콘서트가 이미 지났는지 확인
+     */
+    public boolean isPassed() {
+        return concertDate.isBefore(LocalDateTime.now());
+    }
+
+    /**
+     * 예약/취소 가능한 상태인지 확인
+     */
+    public boolean isBookingAvailable() {
+        return !isPassed() && hasAvailableSeats();
     }
 
     // ID 할당 (Repository에서 사용)
@@ -123,6 +148,12 @@ public class Concert {
     private void validateTotalSeats(int totalSeats) {
         if (totalSeats <= 0) {
             throw new IllegalArgumentException("총 좌석 수는 1 이상이어야 합니다.");
+        }
+    }
+
+    private void validateConcertNotPassed() {
+        if (isPassed()) {
+            throw new IllegalArgumentException("이미 지난 콘서트입니다.");
         }
     }
 

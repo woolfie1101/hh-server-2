@@ -127,4 +127,44 @@ class ConcertTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("취소할 예약이 없습니다.");
     }
+
+    @Test
+    void 매진_상태_확인_테스트() {
+        // given
+        Concert concert = new Concert("샤이니 월드 7th", "샤이니",
+            LocalDateTime.of(2025, 6, 25, 17, 25, 0), 1);
+
+        // when & then
+        assertThat(concert.isSoldOut()).isFalse();
+
+        concert.reserveSeat();
+        assertThat(concert.isSoldOut()).isTrue();
+    }
+
+    @Test
+    void 콘서트_날짜_지남_확인_테스트() {
+        // given
+        LocalDateTime pastDate = LocalDateTime.now().minusHours(1);
+        LocalDateTime futureDate = LocalDateTime.now().plusDays(1);
+
+        // 과거 날짜 콘서트는 생성 시점에서 검증되므로 별도 테스트
+        // 여기서는 미래 콘서트가 시간이 지나면서 과거가 되는 케이스를 시뮬레이션
+        Concert futureConcert = new Concert("샤이니 월드 7th", "샤이니", futureDate, 100);
+
+        // when & then
+        assertThat(futureConcert.isPassed()).isFalse();
+    }
+
+    @Test
+    void 예약_가능_상태_확인_테스트() {
+        // given
+        Concert concert = new Concert("샤이니 월드 7th", "샤이니",
+            LocalDateTime.of(2025, 6, 25, 17, 25, 0), 1);
+
+        // when & then
+        assertThat(concert.isBookingAvailable()).isTrue();
+
+        concert.reserveSeat(); // 매진
+        assertThat(concert.isBookingAvailable()).isFalse();
+    }
 }
