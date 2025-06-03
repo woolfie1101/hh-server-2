@@ -177,4 +177,41 @@ class ReservationTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("가격은 0 이상이어야 합니다.");
     }
+
+    @Test
+    void 예약_정보_유효성_검증_테스트() {
+        // given
+        Reservation validReservation = new Reservation("user-123", 1L, 10L, "A-15", BigDecimal.valueOf(150000));
+
+        // when & then
+        assertThat(validReservation.isValid()).isTrue();
+    }
+
+    @Test
+    void 결제_가능_상태_확인_테스트() {
+        // given
+        Reservation reservation = new Reservation("user-123", 1L, 10L, "A-15", BigDecimal.valueOf(150000));
+
+        // when & then
+        assertThat(reservation.isPayable()).isTrue(); // TEMPORARY 상태는 결제 가능
+
+        reservation.confirm();
+        assertThat(reservation.isPayable()).isFalse(); // CONFIRMED 상태는 결제 불가
+
+        Reservation cancelledReservation = new Reservation("user-456", 2L, 20L, "B-10", BigDecimal.valueOf(120000));
+        cancelledReservation.cancel();
+        assertThat(cancelledReservation.isPayable()).isFalse(); // CANCELLED 상태는 결제 불가
+    }
+
+    @Test
+    void 자동_만료_처리_테스트() {
+        // given
+        Reservation reservation = new Reservation("user-123", 1L, 10L, "A-15", BigDecimal.valueOf(150000));
+
+        // when
+        reservation.processExpiredReservation(); // 아직 만료되지 않았으므로 상태 변화 없음
+
+        // then
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.TEMPORARY);
+    }
 }

@@ -49,6 +49,9 @@ public class Reservation {
      * @return 확정 성공 여부
      */
     public boolean confirm() {
+        // 만료된 예약이 있다면 자동 처리
+        processExpiredReservation();
+
         if (!status.isModifiable()) {
             return false;
         }
@@ -63,6 +66,9 @@ public class Reservation {
      * @return 취소 성공 여부
      */
     public boolean cancel() {
+        // 만료된 예약이 있다면 자동 처리
+        processExpiredReservation();
+
         if (!status.isModifiable()) {
             return false;
         }
@@ -97,9 +103,20 @@ public class Reservation {
     }
 
     /**
+     * 만료된 예약 자동 처리
+     */
+    public void processExpiredReservation() {
+        if (status == ReservationStatus.TEMPORARY && isExpired()) {
+            markAsExpired();
+        }
+    }
+
+    /**
      * 수정 가능한 상태인지 확인
      */
     public boolean isModifiable() {
+        // 만료된 예약이 있다면 자동 처리
+        processExpiredReservation();
         return status.isModifiable() && !isExpired();
     }
 
@@ -123,6 +140,9 @@ public class Reservation {
      * 예약 상태 요약 정보
      */
     public String getStatusSummary() {
+        // 만료된 예약이 있다면 자동 처리
+        processExpiredReservation();
+
         switch (status) {
             case TEMPORARY:
                 if (isExpired()) {
@@ -138,6 +158,30 @@ public class Reservation {
             default:
                 return status.getDescription();
         }
+    }
+
+    /**
+     * 예약 정보가 유효한지 전체 검증
+     */
+    public boolean isValid() {
+        try {
+            validateUserId(this.userId);
+            validateConcertId(this.concertId);
+            validateSeatId(this.seatId);
+            validateSeatNumber(this.seatNumber);
+            validatePrice(this.price);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    /**
+     * 결제 가능한 상태인지 확인
+     */
+    public boolean isPayable() {
+        processExpiredReservation();
+        return status == ReservationStatus.TEMPORARY && !isExpired();
     }
 
     // ID 할당 (Repository에서 사용)
