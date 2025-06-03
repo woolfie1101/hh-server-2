@@ -214,4 +214,107 @@ class ReservationTest {
         // then
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.TEMPORARY);
     }
+
+    @Test
+    void 결제와_함께_예약_확정_성공_테스트() {
+        // given
+        Reservation reservation = new Reservation("user-123", 1L, 10L, "A-15", BigDecimal.valueOf(150000));
+        reservation.assignId(1L); // ID 할당 (Repository에서 할당하는 것 시뮬레이션)
+
+        Payment payment = new Payment("user-123", 1L, BigDecimal.valueOf(150000), "CREDIT_CARD");
+        payment.complete("TXN-12345"); // 결제 완료
+
+        // when
+        boolean result = reservation.confirmWithPayment(payment);
+
+        // then
+        assertThat(result).isTrue();
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+    }
+
+    @Test
+    void 결제_실패시_예약_확정_실패_테스트() {
+        // given
+        Reservation reservation = new Reservation("user-123", 1L, 10L, "A-15", BigDecimal.valueOf(150000));
+        reservation.assignId(1L);
+
+        Payment payment = new Payment("user-123", 1L, BigDecimal.valueOf(150000), "CREDIT_CARD");
+        payment.fail("잔액 부족"); // 결제 실패
+
+        // when
+        boolean result = reservation.confirmWithPayment(payment);
+
+        // then
+        assertThat(result).isFalse();
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.TEMPORARY); // 상태 변화 없음
+    }
+
+    @Test
+    void 결제와_함께_예약_취소_및_환불_테스트() {
+        // given
+        Reservation reservation = new Reservation("user-123", 1L, 10L, "A-15", BigDecimal.valueOf(150000));
+        reservation.assignId(1L);
+
+        Payment payment = new Payment("user-123", 1L, BigDecimal.valueOf(150000), "CREDIT_CARD");
+        payment.complete("TXN-12345"); // 결제 완료
+
+        // when
+        boolean result = reservation.cancelWithRefund(payment);
+
+        // then
+        assertThat(result).isTrue();
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        assertThat(payment.getRefundReason()).isEqualTo("예약 취소");
+    }
+
+    @Test
+    void 대기중인_결제와_함께_예약_취소_테스트() {
+        // given
+        Reservation reservation = new Reservation("user-123", 1L, 10L, "A-15", BigDecimal.valueOf(150000));
+        reservation.assignId(1L);
+
+        Payment payment = new Payment("user-123", 1L, BigDecimal.valueOf(150000), "CREDIT_CARD");
+        // 결제는 PENDING 상태
+
+        // when
+        boolean result = reservation.cancelWithRefund(payment);
+
+        // then
+        assertThat(result).isTrue();
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CANCELLED);
+    }
+
+    @Test
+    void 예약_만료시_결제_취소_테스트() {
+        // given
+        Reservation reservation = new Reservation("user-123", 1L, 10L, "A-15", BigDecimal.valueOf(150000));
+        Payment payment = new Payment("user-123", 1L, BigDecimal.valueOf(150000), "CREDIT_CARD");
+
+        // when
+        reservation.expireWithPaymentCancellation(payment);
+
+        // then
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.EXPIRED);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CANCELLED);
+    }
+
+    @Test
+    void 잘못된_결제_정보로_예약_확정_실패_테스트() {
+        // given
+        Reservation reservation = new Reservation("user-123", 1L, 10L, "A-15", BigDecimal.valueOf(150000));
+        reservation.assignId(1L);
+
+        // 다른 사용자의 결제
+        Payment wrongUserPayment = new Payment("user-456", 1L, BigDecimal.valueOf(150000), "CREDIT_CARD");
+        wrongUserPayment.complete("TXN-12345");
+
+        // when
+        boolean result = reservation.confirmWithPayment(wrongUserPayment);
+
+        // then
+        assertThat(result).isFalse();
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.TEMPORARY);
+    }
 }

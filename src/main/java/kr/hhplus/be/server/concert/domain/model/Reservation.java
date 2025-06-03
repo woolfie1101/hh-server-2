@@ -161,6 +161,14 @@ public class Reservation {
     }
 
     /**
+     * 결제 가능한 상태인지 확인
+     */
+    public boolean isPayable() {
+        processExpiredReservation();
+        return status == ReservationStatus.TEMPORARY && !isExpired();
+    }
+
+    /**
      * 예약 정보가 유효한지 전체 검증
      */
     public boolean isValid() {
@@ -177,11 +185,71 @@ public class Reservation {
     }
 
     /**
-     * 결제 가능한 상태인지 확인
+     * 결제와 함께 예약 확정
+     * @param payment 결제 정보
+     * @return 확정 성공 여부
      */
-    public boolean isPayable() {
-        processExpiredReservation();
-        return status == ReservationStatus.TEMPORARY && !isExpired();
+    public boolean confirmWithPayment(Payment payment) {
+        if (!isPaymentValid(payment)) {
+            return false;
+        }
+
+        if (!payment.isSuccessful()) {
+            return false;
+        }
+
+        return confirm();
+    }
+
+    /**
+     * 결제와 함께 예약 취소 (환불 처리)
+     * @param payment 결제 정보
+     * @return 취소 성공 여부
+     */
+    public boolean cancelWithRefund(Payment payment) {
+        if (!isPaymentValid(payment)) {
+            return false;
+        }
+
+        // 예약 취소 먼저 시도
+        if (!cancel()) {
+            return false;
+        }
+
+        // 완료된 결제가 있다면 환불 처리
+        if (payment.canBeRefunded()) {
+            payment.refund("예약 취소");
+        } else if (payment.canBeProcessed()) {
+            payment.cancel();
+        }
+
+        return true;
+    }
+
+    /**
+     * 만료 시 결제 취소 처리
+     * @param payment 결제 정보
+     */
+    public void expireWithPaymentCancellation(Payment payment) {
+        markAsExpired();
+
+        if (payment != null && payment.canBeProcessed()) {
+            payment.cancel();
+        }
+    }
+
+    /**
+     * 결제 정보가 이 예약과 일치하는지 검증
+     */
+    private boolean isPaymentValid(Payment payment) {
+        if (payment == null) {
+            return false;
+        }
+
+        return this.id != null &&
+            this.id.equals(payment.getReservationId()) &&
+            this.userId.equals(payment.getUserId()) &&
+            this.price.equals(payment.getAmount());
     }
 
     // ID 할당 (Repository에서 사용)
