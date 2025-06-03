@@ -153,6 +153,54 @@ public class Payment {
         }
     }
 
+    /**
+     * 결제 처리 시간 계산 (초 단위)
+     */
+    public long getProcessingTimeInSeconds() {
+        if (status == PaymentStatus.PENDING) {
+            return java.time.Duration.between(createdAt, LocalDateTime.now()).getSeconds();
+        }
+
+        if (completedAt != null) {
+            return java.time.Duration.between(createdAt, completedAt).getSeconds();
+        }
+
+        return 0;
+    }
+
+    /**
+     * 결제 정보가 유효한지 전체 검증
+     */
+    public boolean isValid() {
+        try {
+            validateUserId(this.userId);
+            validateReservationId(this.reservationId);
+            validateAmount(this.amount);
+            validatePaymentMethod(this.paymentMethod);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    /**
+     * 재시도 가능한 상태인지 확인
+     */
+    public boolean canRetry() {
+        return status == PaymentStatus.FAILED;
+    }
+
+    /**
+     * 결제 방법 검증
+     */
+    public boolean isValidPaymentMethod() {
+        return paymentMethod != null &&
+            (paymentMethod.equals("CREDIT_CARD") ||
+                paymentMethod.equals("BANK_TRANSFER") ||
+                paymentMethod.equals("MOBILE_PAYMENT") ||
+                paymentMethod.equals("POINT"));
+    }
+
     // ID 할당 (Repository에서 사용)
     public void assignId(Long id) {
         this.id = id;
@@ -230,6 +278,18 @@ public class Payment {
         if (paymentMethod == null || paymentMethod.trim().isEmpty()) {
             throw new IllegalArgumentException("결제 방법은 필수입니다.");
         }
+
+        // 지원하는 결제 방법 검증
+        if (!isValidPaymentMethodValue(paymentMethod)) {
+            throw new IllegalArgumentException("지원하지 않는 결제 방법입니다: " + paymentMethod);
+        }
+    }
+
+    private boolean isValidPaymentMethodValue(String paymentMethod) {
+        return paymentMethod.equals("CREDIT_CARD") ||
+            paymentMethod.equals("BANK_TRANSFER") ||
+            paymentMethod.equals("MOBILE_PAYMENT") ||
+            paymentMethod.equals("POINT");
     }
 
     private void validateTransactionId(String transactionId) {

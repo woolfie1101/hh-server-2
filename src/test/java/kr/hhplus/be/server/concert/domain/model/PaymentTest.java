@@ -221,4 +221,65 @@ class PaymentTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("환불 사유는 필수입니다.");
     }
+
+    @Test
+    void 결제_처리_시간_확인_테스트() {
+        // given
+        Payment payment = new Payment("user-123", 1L, BigDecimal.valueOf(150000), "CREDIT_CARD");
+
+        // when & then
+        assertThat(payment.getProcessingTimeInSeconds()).isGreaterThanOrEqualTo(0);
+
+        payment.complete("TXN-12345");
+        assertThat(payment.getProcessingTimeInSeconds()).isGreaterThanOrEqualTo(0);
+    }
+
+    @Test
+    void 결제_정보_유효성_검증_테스트() {
+        // given
+        Payment validPayment = new Payment("user-123", 1L, BigDecimal.valueOf(150000), "CREDIT_CARD");
+
+        // when & then
+        assertThat(validPayment.isValid()).isTrue();
+    }
+
+    @Test
+    void 재시도_가능_여부_확인_테스트() {
+        // given
+        Payment payment = new Payment("user-123", 1L, BigDecimal.valueOf(150000), "CREDIT_CARD");
+
+        // when & then
+        assertThat(payment.canRetry()).isFalse(); // PENDING 상태는 재시도 불가
+
+        payment.fail("네트워크 오류");
+        assertThat(payment.canRetry()).isTrue(); // FAILED 상태는 재시도 가능
+
+        Payment completedPayment = new Payment("user-456", 2L, BigDecimal.valueOf(120000), "BANK_TRANSFER");
+        completedPayment.complete("TXN-67890");
+        assertThat(completedPayment.canRetry()).isFalse(); // COMPLETED 상태는 재시도 불가
+    }
+
+    @Test
+    void 결제_방법_유효성_확인_테스트() {
+        // given & when & then
+        Payment creditCardPayment = new Payment("user-123", 1L, BigDecimal.valueOf(150000), "CREDIT_CARD");
+        assertThat(creditCardPayment.isValidPaymentMethod()).isTrue();
+
+        Payment bankTransferPayment = new Payment("user-123", 1L, BigDecimal.valueOf(150000), "BANK_TRANSFER");
+        assertThat(bankTransferPayment.isValidPaymentMethod()).isTrue();
+
+        Payment mobilePayment = new Payment("user-123", 1L, BigDecimal.valueOf(150000), "MOBILE_PAYMENT");
+        assertThat(mobilePayment.isValidPaymentMethod()).isTrue();
+
+        Payment pointPayment = new Payment("user-123", 1L, BigDecimal.valueOf(150000), "POINT");
+        assertThat(pointPayment.isValidPaymentMethod()).isTrue();
+    }
+
+    @Test
+    void 지원하지_않는_결제_방법으로_생성시_예외_발생_테스트() {
+        // when & then
+        assertThatThrownBy(() -> new Payment("user-123", 1L, BigDecimal.valueOf(150000), "UNKNOWN_METHOD"))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("지원하지 않는 결제 방법입니다: UNKNOWN_METHOD");
+    }
 }
