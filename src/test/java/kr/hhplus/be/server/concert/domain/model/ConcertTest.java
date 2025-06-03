@@ -9,9 +9,9 @@ class ConcertTest {
     @Test
     void 콘서트_생성_테스트() {
         // given
-        String title = "샤이니 콘서트";
+        String title = "샤이니 월드 7th";
         String artist = "샤이니";
-        LocalDateTime concertDate = LocalDateTime.of(2025, 05, 25, 17, 0);
+        LocalDateTime concertDate = LocalDateTime.of(2025, 6, 25, 17, 25, 0);
         int totalSeats = 100;
 
         // when
@@ -28,8 +28,8 @@ class ConcertTest {
     @Test
     void 좌석_예약_테스트() {
         // given
-        Concert concert = new Concert("샤이니 콘서트", "샤이니",
-            LocalDateTime.of(2025, 05, 25, 17, 0), 100);
+        Concert concert = new Concert("샤이니 월드 7th", "샤이니",
+            LocalDateTime.of(2025, 6, 25, 17, 25, 0), 100);
 
         // when
         boolean result = concert.reserveSeat();
@@ -42,8 +42,8 @@ class ConcertTest {
     @Test
     void 모든_좌석_예약_완료시_예약_실패_테스트() {
         // given
-        Concert concert = new Concert("샤이니 콘서트", "샤이니",
-            LocalDateTime.of(2025, 05, 25, 17, 0), 1);
+        Concert concert = new Concert("샤이니 월드 7th", "샤이니",
+            LocalDateTime.of(2025, 6, 25, 17, 25, 0), 1);
 
         // 1개 좌석 예약
         concert.reserveSeat();
@@ -59,8 +59,8 @@ class ConcertTest {
     @Test
     void 좌석_예약_취소_테스트() {
         // given
-        Concert concert = new Concert("샤이니 콘서트", "샤이니",
-            LocalDateTime.of(2025, 05, 25, 17, 0), 100);
+        Concert concert = new Concert("샤이니 월드 7th", "샤이니",
+            LocalDateTime.of(2025, 6, 25, 17, 25, 0), 100);
         concert.reserveSeat(); // 1개 예약
 
         // when
@@ -73,8 +73,8 @@ class ConcertTest {
     @Test
     void 예약_가능_여부_확인_테스트() {
         // given
-        Concert concert = new Concert("샤이니 콘서트", "샤이니",
-            LocalDateTime.of(2025, 05, 25, 17, 0), 2);
+        Concert concert = new Concert("샤이니 월드 7th", "샤이니",
+            LocalDateTime.of(2025, 6, 25, 17, 25, 0), 2);
 
         // when & then
         assertThat(concert.hasAvailableSeats()).isTrue();
@@ -92,7 +92,7 @@ class ConcertTest {
         LocalDateTime pastDate = LocalDateTime.now().minusDays(1);
 
         // when & then
-        assertThatThrownBy(() -> new Concert("샤이니 콘서트", "샤이니", pastDate, 100))
+        assertThatThrownBy(() -> new Concert("샤이니 월드 7th", "샤이니", pastDate, 100))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("콘서트 날짜는 현재 시간 이후여야 합니다.");
     }
@@ -107,11 +107,11 @@ class ConcertTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("콘서트 제목은 필수입니다.");
 
-        assertThatThrownBy(() -> new Concert("샤이니 콘서트", "", futureDate, 100))
+        assertThatThrownBy(() -> new Concert("샤이니 월드 7th", "", futureDate, 100))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("아티스트명은 필수입니다.");
 
-        assertThatThrownBy(() -> new Concert("샤이니 콘서트", "샤이니", futureDate, 0))
+        assertThatThrownBy(() -> new Concert("샤이니 월드 7th", "샤이니", futureDate, 0))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("총 좌석 수는 1 이상이어야 합니다.");
     }
@@ -119,8 +119,8 @@ class ConcertTest {
     @Test
     void 과도한_예약_취소시_예외_발생_테스트() {
         // given
-        Concert concert = new Concert("샤이니 콘서트", "샤이니",
-            LocalDateTime.of(2025, 05, 25, 17, 0), 100);
+        Concert concert = new Concert("샤이니 월드 7th", "샤이니",
+            LocalDateTime.of(2025, 6, 25, 17, 25, 0), 100);
 
         // when & then
         assertThatThrownBy(() -> concert.cancelReservation())
