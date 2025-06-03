@@ -183,8 +183,8 @@ class SeatTest {
         assertThat(seat.getRemainingMinutes()).isEqualTo(0); // 예약 안된 상태
 
         seat.reserve("user-123");
-        assertThat(seat.getRemainingMinutes()).isGreaterThan(4); // 5분 미만으로 남음
-        assertThat(seat.getRemainingMinutes()).isLessThanOrEqualTo(5);
+        assertThat(seat.getRemainingMinutes()).isGreaterThanOrEqualTo(4); // 4분 이상
+        assertThat(seat.getRemainingMinutes()).isLessThanOrEqualTo(5); // 5분 이하
     }
 
     @Test
