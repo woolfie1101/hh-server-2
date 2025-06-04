@@ -48,8 +48,34 @@ public class ReservationUseCase {
      * @return 예약 정보
      */
     public Reservation reserveSeat(String userId, Long concertId, Long seatId) {
-        // TODO: 테스트를 실패시키기 위해 일단 null 반환
-        return null;
+        // 1. 사용자 조회
+        User user = userRepository.findByUuid(userId)
+            .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
+
+        // 2. 콘서트 조회
+        Concert concert = concertRepository.findById(concertId)
+            .orElseThrow(() -> new IllegalArgumentException("콘서트를 찾을 수 없습니다: " + concertId));
+
+        // 3. 좌석 조회 및 예약 가능 여부 확인
+        Seat seat = seatRepository.findById(seatId)
+            .orElseThrow(() -> new IllegalArgumentException("좌석을 찾을 수 없습니다: " + seatId));
+
+        if (!seat.isAvailable()) {
+            throw new IllegalStateException("이미 예약된 좌석입니다.");
+        }
+
+        // 4. 좌석 예약
+        seat.reserve(userId);
+        seatRepository.save(seat);
+
+        // 5. 예약 정보 생성
+        Reservation reservation = new Reservation(userId, concertId, seatId, seat.getSeatNumber(), seat.getPrice());
+        Reservation savedReservation = reservationRepository.save(reservation);
+
+        // 6. 예약 이벤트 발행
+        eventPublisher.publishEvent(new ReservationCreatedEvent(savedReservation));
+
+        return savedReservation;
     }
 
     /**
@@ -59,8 +85,43 @@ public class ReservationUseCase {
      * @return 결제 결과
      */
     public PaymentResult processPayment(Long reservationId, String paymentMethod) {
-        // TODO: 테스트를 실패시키기 위해 일단 null 반환
-        return null;
+        // 1. 예약 조회
+        Reservation reservation = reservationRepository.findById(reservationId)
+            .orElseThrow(() -> new IllegalArgumentException("예약을 찾을 수 없습니다: " + reservationId));
+
+        // 2. 사용자 조회
+        User user = userRepository.findByUuid(reservation.getUserId())
+            .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + reservation.getUserId()));
+
+        // 3. 포인트 결제인 경우 잔액 확인
+        if ("POINT".equals(paymentMethod) && !user.hasEnoughBalance(reservation.getPrice())) {
+            throw new IllegalStateException("잔액이 부족합니다.");
+        }
+
+        // 4. 결제 정보 생성
+        Payment payment = new Payment(reservation.getUserId(), reservationId, reservation.getPrice(), paymentMethod);
+
+        // 5. 외부 결제 시스템 호출
+        String transactionId = paymentService.processPayment(payment);
+
+        // 6. 결제 완료 처리
+        payment.complete(transactionId);
+        paymentRepository.save(payment);
+
+        // 7. 포인트 결제인 경우 잔액 차감
+        if ("POINT".equals(paymentMethod)) {
+            user.useBalance(reservation.getPrice());
+            userRepository.save(user);
+        }
+
+        // 8. 예약 확정
+        reservation.confirm();
+        reservationRepository.save(reservation);
+
+        // 9. 결제 완료 이벤트 발행
+        eventPublisher.publishEvent(new PaymentCompletedEvent(payment, reservation));
+
+        return PaymentResult.success(transactionId);
     }
 
     /**
@@ -70,7 +131,49 @@ public class ReservationUseCase {
      * @return 취소 성공 여부
      */
     public boolean cancelReservation(Long reservationId, String userId) {
-        // TODO: 테스트를 실패시키기 위해 일단 false 반환
-        return false;
+        // 1. 예약 조회
+        Reservation reservation = reservationRepository.findById(reservationId)
+            .orElseThrow(() -> new IllegalArgumentException("예약을 찾을 수 없습니다: " + reservationId));
+
+        // 2. 본인 예약인지 확인
+        if (!reservation.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("본인의 예약만 취소할 수 있습니다.");
+        }
+
+        // 3. 예약 취소
+        reservation.cancel();
+        reservationRepository.save(reservation);
+
+        // 4. 좌석 예약 해제 (필요시)
+        // seat 관련 로직은 도메인에 위임
+
+        // 5. 취소 이벤트 발행
+        eventPublisher.publishEvent(new ReservationCancelledEvent(reservation));
+
+        return true;
+    }
+
+    // 이벤트 클래스들 (간단한 구현)
+    public static class ReservationCreatedEvent {
+        private final Reservation reservation;
+        public ReservationCreatedEvent(Reservation reservation) { this.reservation = reservation; }
+        public Reservation getReservation() { return reservation; }
+    }
+
+    public static class PaymentCompletedEvent {
+        private final Payment payment;
+        private final Reservation reservation;
+        public PaymentCompletedEvent(Payment payment, Reservation reservation) {
+            this.payment = payment;
+            this.reservation = reservation;
+        }
+        public Payment getPayment() { return payment; }
+        public Reservation getReservation() { return reservation; }
+    }
+
+    public static class ReservationCancelledEvent {
+        private final Reservation reservation;
+        public ReservationCancelledEvent(Reservation reservation) { this.reservation = reservation; }
+        public Reservation getReservation() { return reservation; }
     }
 }
