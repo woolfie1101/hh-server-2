@@ -2,6 +2,7 @@ package kr.hhplus.be.server.concert.application.usecase;
 
 import kr.hhplus.be.server.concert.application.dto.PaymentResult;
 import kr.hhplus.be.server.concert.application.event.EventPublisher;
+import kr.hhplus.be.server.concert.application.exception.ReservationExceptions;
 import kr.hhplus.be.server.concert.application.service.PaymentService;
 import kr.hhplus.be.server.concert.domain.model.*;
 import kr.hhplus.be.server.concert.domain.repository.*;
@@ -114,8 +115,8 @@ class ReservationUseCaseTest {
 
         // when & then
         assertThatThrownBy(() -> reservationUseCase.reserveSeat(userId, concertId, seatId))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessage("이미 예약된 좌석입니다.");
+            .isInstanceOf(ReservationExceptions.SeatAlreadyReservedException.class)
+            .hasMessageContaining("이미 예약되었습니다");
 
         verify(reservationRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any());
@@ -175,8 +176,8 @@ class ReservationUseCaseTest {
 
         // when & then
         assertThatThrownBy(() -> reservationUseCase.processPayment(reservationId, paymentMethod))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessage("잔액이 부족합니다.");
+            .isInstanceOf(ReservationExceptions.InsufficientBalanceException.class)
+            .hasMessageContaining("잔액이 부족합니다");
 
         verify(paymentService, never()).processPayment(any());
         verify(eventPublisher, never()).publishEvent(any());
@@ -219,8 +220,8 @@ class ReservationUseCaseTest {
 
         // when & then
         assertThatThrownBy(() -> reservationUseCase.cancelReservation(reservationId, userId))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("본인의 예약만 취소할 수 있습니다.");
+            .isInstanceOf(ReservationExceptions.UnauthorizedAccessException.class)
+            .hasMessageContaining("권한이 없습니다");
 
         verify(reservationRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any());
