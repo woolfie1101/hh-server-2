@@ -5,8 +5,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
-@NoArgsConstructor
-@AllArgsConstructor
 public class ReservationDtos {
     @Getter
     @NoArgsConstructor
@@ -25,6 +23,10 @@ public class ReservationDtos {
         }
 
         public static <T> ApiResponse<T> error(String message) {
+            return new ApiResponse<>(false, message, null);
+        }
+
+        public static <T> ApiResponse<T> failure(String message) {
             return new ApiResponse<>(false, message, null);
         }
     }

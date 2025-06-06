@@ -1,5 +1,8 @@
 package kr.hhplus.be.server.common.exception;
 
+import kr.hhplus.be.server.concert.domain.exception.PaymentException;
+import kr.hhplus.be.server.concert.domain.exception.ReservationException;
+import kr.hhplus.be.server.concert.domain.exception.SeatException;
 import kr.hhplus.be.server.concert.interfaces.dto.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
