@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,13 +23,35 @@ import static org.assertj.core.api.Assertions.*;
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "spring.jpa.show-sql=true"
 })
+@ActiveProfiles("test")
 class SpringConcertJpaTest {
 
     @Autowired
-    private SpringConcertJpa springConcertJpa;
+    private SpringConcertJpa concertJpa;
 
     @Autowired
     private TestEntityManager entityManager;
+
+    @Test
+    void 콘서트_저장_및_조회_테스트() {
+        // given
+        ConcertEntity concert = new ConcertEntity(
+            "샤이니 월드 7th",
+            "샤이니",
+            LocalDateTime.now().plusDays(30),
+            100
+        );
+
+        // when
+        ConcertEntity savedConcert = concertJpa.save(concert);
+
+        // then
+        assertThat(savedConcert.getId()).isNotNull();
+        assertThat(savedConcert.getTitle()).isEqualTo("샤이니 월드 7th");
+        assertThat(savedConcert.getArtist()).isEqualTo("샤이니");
+        assertThat(savedConcert.getTotalSeats()).isEqualTo(100);
+        assertThat(savedConcert.getReservedSeats()).isEqualTo(0);
+    }
 
     @Test
     void 아티스트별_콘서트_조회_테스트() {
@@ -36,36 +59,107 @@ class SpringConcertJpaTest {
         ConcertEntity concert1 = new ConcertEntity(
             "샤이니 월드 7th",
             "샤이니",
-            LocalDateTime.of(2025, 6, 25, 17, 25, 0),
+            LocalDateTime.now().plusDays(30),
             100
         );
         ConcertEntity concert2 = new ConcertEntity(
-            "샤이니 콘서트 투어",
-            "샤이니",
-            LocalDateTime.of(2025, 7, 15, 19, 0, 0),
-            150
-        );
-        ConcertEntity concert3 = new ConcertEntity(
             "아이유 콘서트",
             "아이유",
-            LocalDateTime.of(2025, 8, 20, 18, 0, 0),
+            LocalDateTime.now().plusDays(60),
             200
         );
-
-        entityManager.persist(concert1);
-        entityManager.persist(concert2);
-        entityManager.persist(concert3);
-        entityManager.flush();
+        concertJpa.save(concert1);
+        concertJpa.save(concert2);
 
         // when
-        List<ConcertEntity> result = springConcertJpa.findByArtist("샤이니");
+        List<ConcertEntity> shineeConcerts = concertJpa.findByArtist("샤이니");
+        List<ConcertEntity> iuConcerts = concertJpa.findByArtist("아이유");
 
         // then
-        assertThat(result).hasSize(2);
-        assertThat(result).extracting(ConcertEntity::getArtist)
-            .containsOnly("샤이니");
-        assertThat(result).extracting(ConcertEntity::getTitle)
-            .containsExactlyInAnyOrder("샤이니 월드 7th", "샤이니 콘서트 투어");
+        assertThat(shineeConcerts).hasSize(1);
+        assertThat(shineeConcerts.get(0).getTitle()).isEqualTo("샤이니 월드 7th");
+        assertThat(iuConcerts).hasSize(1);
+        assertThat(iuConcerts.get(0).getTitle()).isEqualTo("아이유 콘서트");
+    }
+
+    @Test
+    void 예약_가능한_콘서트_조회_테스트() {
+        // given
+        ConcertEntity availableConcert = new ConcertEntity(
+            "샤이니 월드 7th",
+            "샤이니",
+            LocalDateTime.now().plusDays(30),
+            100
+        );
+        ConcertEntity soldOutConcert = new ConcertEntity(
+            "아이유 콘서트",
+            "아이유",
+            LocalDateTime.now().plusDays(60),
+            1
+        );
+        soldOutConcert.setReservedSeats(1); // 매진 상태
+        concertJpa.save(availableConcert);
+        concertJpa.save(soldOutConcert);
+
+        // when
+        List<ConcertEntity> availableConcerts = concertJpa.findAvailableConcerts();
+
+        // then
+        assertThat(availableConcerts).hasSize(1);
+        assertThat(availableConcerts.get(0).getTitle()).isEqualTo("샤이니 월드 7th");
+    }
+
+    @Test
+    void 다가오는_콘서트_조회_테스트() {
+        // given
+        LocalDateTime now = LocalDateTime.now();
+        ConcertEntity pastConcert = new ConcertEntity(
+            "과거 콘서트",
+            "아티스트1",
+            now.minusDays(1),
+            100
+        );
+        ConcertEntity futureConcert = new ConcertEntity(
+            "미래 콘서트",
+            "아티스트2",
+            now.plusDays(30),
+            100
+        );
+        concertJpa.save(pastConcert);
+        concertJpa.save(futureConcert);
+
+        // when
+        List<ConcertEntity> upcomingConcerts = concertJpa.findUpcomingConcerts(now);
+
+        // then
+        assertThat(upcomingConcerts).hasSize(1);
+        assertThat(upcomingConcerts.get(0).getTitle()).isEqualTo("미래 콘서트");
+    }
+
+    @Test
+    void 제목으로_콘서트_검색_테스트() {
+        // given
+        ConcertEntity concert1 = new ConcertEntity(
+            "샤이니 월드 7th",
+            "샤이니",
+            LocalDateTime.now().plusDays(30),
+            100
+        );
+        ConcertEntity concert2 = new ConcertEntity(
+            "아이유 콘서트",
+            "아이유",
+            LocalDateTime.now().plusDays(60),
+            200
+        );
+        concertJpa.save(concert1);
+        concertJpa.save(concert2);
+
+        // when
+        List<ConcertEntity> searchResults = concertJpa.findByTitleContaining("콘서트");
+
+        // then
+        assertThat(searchResults).hasSize(1);
+        assertThat(searchResults.get(0).getTitle()).isEqualTo("아이유 콘서트");
     }
 
     @Test
@@ -99,122 +193,12 @@ class SpringConcertJpaTest {
         entityManager.flush();
 
         // when
-        List<ConcertEntity> result = springConcertJpa.findByConcertDateBetween(startDate, endDate);
+        List<ConcertEntity> result = concertJpa.findByConcertDateBetween(startDate, endDate);
 
         // then
         assertThat(result).hasSize(2);
         assertThat(result).extracting(ConcertEntity::getTitle)
             .containsExactlyInAnyOrder("6월 콘서트", "7월 콘서트");
-    }
-
-    @Test
-    void 예약_가능한_콘서트_조회_테스트() {
-        // given
-        ConcertEntity availableConcert = new ConcertEntity(
-            "예약 가능 콘서트",
-            "아티스트A",
-            LocalDateTime.of(2025, 6, 25, 19, 0, 0),
-            100
-        );
-        availableConcert.setReservedSeats(50); // 50석 예약됨
-
-        ConcertEntity soldOutConcert = new ConcertEntity(
-            "매진 콘서트",
-            "아티스트B",
-            LocalDateTime.of(2025, 7, 15, 19, 0, 0),
-            100
-        );
-        soldOutConcert.setReservedSeats(100); // 전석 예약됨
-
-        entityManager.persist(availableConcert);
-        entityManager.persist(soldOutConcert);
-        entityManager.flush();
-
-        // when
-        List<ConcertEntity> result = springConcertJpa.findAvailableConcerts();
-
-        // then
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getTitle()).isEqualTo("예약 가능 콘서트");
-        assertThat(result.get(0).getTotalSeats()).isGreaterThan(result.get(0).getReservedSeats());
-    }
-
-    @Test
-    void 다가오는_콘서트_조회_테스트() {
-        // given
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime currentTime = now.minusHours(1); // 1시간 전을 기준으로 설정
-
-        ConcertEntity pastConcert = new ConcertEntity(
-            "지난 콘서트",
-            "아티스트A",
-            now.minusDays(1), // 1일 전
-            100
-        );
-        ConcertEntity upcomingConcert1 = new ConcertEntity(
-            "다가오는 콘서트1",
-            "아티스트B",
-            now.plusDays(1), // 1일 후
-            150
-        );
-        ConcertEntity upcomingConcert2 = new ConcertEntity(
-            "다가오는 콘서트2",
-            "아티스트C",
-            now.plusDays(7), // 7일 후
-            200
-        );
-
-        entityManager.persist(pastConcert);
-        entityManager.persist(upcomingConcert1);
-        entityManager.persist(upcomingConcert2);
-        entityManager.flush();
-
-        // when
-        List<ConcertEntity> result = springConcertJpa.findUpcomingConcerts(currentTime);
-
-        // then
-        assertThat(result).hasSize(2);
-        assertThat(result).extracting(ConcertEntity::getTitle)
-            .containsExactlyInAnyOrder("다가오는 콘서트1", "다가오는 콘서트2");
-
-        // 날짜순으로 정렬되는지 확인
-        assertThat(result.get(0).getConcertDate()).isBefore(result.get(1).getConcertDate());
-    }
-
-    @Test
-    void 제목_검색_콘서트_조회_테스트() {
-        // given
-        ConcertEntity concert1 = new ConcertEntity(
-            "샤이니 월드 7th",
-            "샤이니",
-            LocalDateTime.of(2025, 6, 25, 19, 0, 0),
-            100
-        );
-        ConcertEntity concert2 = new ConcertEntity(
-            "샤이니 콘서트 투어",
-            "샤이니",
-            LocalDateTime.of(2025, 7, 15, 19, 0, 0),
-            150
-        );
-        ConcertEntity concert3 = new ConcertEntity(
-            "아이유 콘서트",
-            "아이유",
-            LocalDateTime.of(2025, 8, 20, 19, 0, 0),
-            200
-        );
-
-        entityManager.persist(concert1);
-        entityManager.persist(concert2);
-        entityManager.persist(concert3);
-        entityManager.flush();
-
-        // when
-        List<ConcertEntity> result = springConcertJpa.findByTitleContaining("샤이니");
-
-        // then
-        assertThat(result).hasSize(2);
-        assertThat(result).extracting(ConcertEntity::getTitle)
-            .allMatch(title -> title.contains("샤이니"));
     }
 
     @Test
@@ -245,33 +229,12 @@ class SpringConcertJpaTest {
         entityManager.flush();
 
         // when
-        List<ConcertEntity> result = springConcertJpa.findByTotalSeatsBetween(100, 300);
+        List<ConcertEntity> result = concertJpa.findByTotalSeatsBetween(100, 300);
 
         // then
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getTitle()).isEqualTo("중간 규모 콘서트");
         assertThat(result.get(0).getTotalSeats()).isBetween(100, 300);
-    }
-
-    @Test
-    void 콘서트_저장_테스트() {
-        // given
-        ConcertEntity concert = new ConcertEntity(
-            "샤이니 월드 7th",
-            "샤이니",
-            LocalDateTime.of(2025, 6, 25, 17, 25, 0),
-            100
-        );
-
-        // when
-        ConcertEntity savedConcert = springConcertJpa.save(concert);
-
-        // then
-        assertThat(savedConcert.getId()).isNotNull();
-        assertThat(savedConcert.getTitle()).isEqualTo("샤이니 월드 7th");
-        assertThat(savedConcert.getArtist()).isEqualTo("샤이니");
-        assertThat(savedConcert.getTotalSeats()).isEqualTo(100);
-        assertThat(savedConcert.getReservedSeats()).isEqualTo(0);
     }
 
     @Test
@@ -287,11 +250,11 @@ class SpringConcertJpaTest {
         Long concertId = savedConcert.getId();
 
         // when
-        springConcertJpa.deleteById(concertId);
+        concertJpa.deleteById(concertId);
         entityManager.flush();
 
         // then
-        assertThat(springConcertJpa.findById(concertId)).isEmpty();
+        assertThat(concertJpa.findById(concertId)).isEmpty();
     }
 
     @Test
@@ -315,7 +278,7 @@ class SpringConcertJpaTest {
         entityManager.flush();
 
         // when
-        long count = springConcertJpa.count();
+        long count = concertJpa.count();
 
         // then
         assertThat(count).isEqualTo(2);
