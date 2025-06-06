@@ -317,4 +317,21 @@ class ReservationTest {
         assertThat(result).isFalse();
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.TEMPORARY);
     }
+
+    @Test
+    void 예약_결제_상태_확인_테스트() {
+        // given
+        Reservation reservation = new Reservation("user-123", 1L, 10L, "A-15", BigDecimal.valueOf(150000));
+
+        // when & then
+        assertThat(reservation.isPaid()).isFalse(); // 초기 상태는 결제되지 않음
+
+        // 결제 완료 상태로 변경
+        reservation.confirm();
+        assertThat(reservation.isPaid()).isTrue(); // 결제 완료 상태 확인
+
+        // 취소 상태로 변경
+        reservation.cancel();
+        assertThat(reservation.isPaid()).isFalse(); // 취소 상태는 결제되지 않음
+    }
 }

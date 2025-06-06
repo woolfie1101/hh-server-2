@@ -252,6 +252,14 @@ public class Reservation {
             this.price.equals(payment.getAmount());
     }
 
+    /**
+     * 예약이 결제되었는지 확인
+     * @return 결제 여부
+     */
+    public boolean isPaid() {
+        return status == ReservationStatus.CONFIRMED;
+    }
+
     // ID 할당 (Repository에서 사용)
     public void assignId(Long id) {
         this.id = id;
