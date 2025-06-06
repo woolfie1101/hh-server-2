@@ -1,22 +1,26 @@
 package kr.hhplus.be.server.concert.infrastructure.persistence.entity;
 
-import kr.hhplus.be.server.concert.domain.model.Concert;
 import jakarta.persistence.*;
+import kr.hhplus.be.server.concert.domain.model.Concert;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
- * Concert JPA 엔티티
- * - 데이터베이스 테이블 매핑 전용 객체
- * - 도메인 모델과 분리된 순수한 데이터 구조
- * - JPA 어노테이션과 DB 제약사항 포함
+ * 콘서트 JPA 엔티티
  */
 @Entity
 @Table(name = "concerts")
+@Getter
+@NoArgsConstructor
 public class ConcertEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(name = "title", nullable = false, length = 200)
     private String title;
@@ -33,66 +37,14 @@ public class ConcertEntity {
     @Column(name = "reserved_seats", nullable = false)
     private int reservedSeats;
 
+    @Column(name = "price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal price;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    // 기본 생성자 (JPA 필수)
-    protected ConcertEntity() {}
-
-    // 비즈니스 생성자
-    public ConcertEntity(String title, String artist, LocalDateTime concertDate, int totalSeats) {
-        this.title = title;
-        this.artist = artist;
-        this.concertDate = concertDate;
-        this.totalSeats = totalSeats;
-        this.reservedSeats = 0; // 초기에는 예약된 좌석 없음
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    /**
-     * 도메인 모델로 변환
-     */
-    public Concert toDomain() {
-        Concert concert = new Concert(this.title, this.artist, this.concertDate, this.totalSeats);
-        if (this.id != null) {
-            concert.assignId(this.id);
-        }
-        return concert;
-    }
-
-    /**
-     * 도메인 모델에서 엔티티 생성
-     */
-    public static ConcertEntity fromDomain(Concert concert) {
-        ConcertEntity entity = new ConcertEntity(
-            concert.getTitle(),
-            concert.getArtist(),
-            concert.getConcertDate(),
-            concert.getTotalSeats()
-        );
-
-        if (concert.getId() != null) {
-            entity.setId(concert.getId());
-        }
-
-        return entity;
-    }
-
-    /**
-     * 도메인 모델의 변경사항을 엔티티에 반영
-     */
-    public void updateFromDomain(Concert concert) {
-        this.title = concert.getTitle();
-        this.artist = concert.getArtist();
-        this.concertDate = concert.getConcertDate();
-        this.totalSeats = concert.getTotalSeats();
-        this.reservedSeats = concert.getReservedSeats();
-        this.updatedAt = LocalDateTime.now();
-    }
 
     // JPA 생명주기 콜백
     @PrePersist
@@ -110,12 +62,41 @@ public class ConcertEntity {
         updatedAt = LocalDateTime.now();
     }
 
+    public static ConcertEntity from(Concert concert) {
+        ConcertEntity entity = new ConcertEntity();
+        entity.id = concert.getId();
+        entity.title = concert.getTitle();
+        entity.artist = concert.getArtist();
+        entity.concertDate = concert.getConcertDate();
+        entity.totalSeats = concert.getTotalSeats();
+        entity.reservedSeats = concert.getReservedSeats();
+        entity.price = concert.getPrice();
+        entity.createdAt = concert.getCreatedAt();
+        entity.updatedAt = concert.getUpdatedAt();
+        return entity;
+    }
+
+    public Concert toDomain() {
+        Concert concert = new Concert(
+            this.title,
+            this.artist,
+            this.concertDate,
+            this.totalSeats,
+            this.price
+        );
+        concert.setId(this.id);
+        concert.setReservedSeats(this.reservedSeats);
+        concert.setCreatedAt(this.createdAt);
+        concert.setUpdatedAt(this.updatedAt);
+        return concert;
+    }
+
     // Getters and Setters
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -159,6 +140,14 @@ public class ConcertEntity {
         this.reservedSeats = reservedSeats;
     }
 
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -173,6 +162,18 @@ public class ConcertEntity {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public int getAvailableSeats() {
+        return totalSeats - reservedSeats;
+    }
+
+    public boolean isSoldOut() {
+        return reservedSeats >= totalSeats;
+    }
+
+    public boolean isBookingAvailable() {
+        return !isSoldOut() && concertDate.isAfter(LocalDateTime.now());
     }
 
     @Override
@@ -198,6 +199,7 @@ public class ConcertEntity {
             ", concertDate=" + concertDate +
             ", totalSeats=" + totalSeats +
             ", reservedSeats=" + reservedSeats +
+            ", price=" + price +
             ", createdAt=" + createdAt +
             ", updatedAt=" + updatedAt +
             '}';

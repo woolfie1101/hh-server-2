@@ -1,5 +1,7 @@
 package kr.hhplus.be.server.concert.application.exception;
 
+import java.util.UUID;
+
 /**
  * 예약 관련 커스텀 예외들
  * - 비즈니스 규칙 위반에 대한 명확한 예외 정의
@@ -20,8 +22,8 @@ public class ReservationExceptions {
      * 이미 예약된 좌석에 대한 예외
      */
     public static class SeatAlreadyReservedException extends RuntimeException {
-        public SeatAlreadyReservedException(Long seatId) {
-            super(String.format("좌석 %d번은 이미 예약되었습니다.", seatId));
+        public SeatAlreadyReservedException(UUID seatId) {
+            super(String.format("좌석 %s번은 이미 예약되었습니다.", seatId));
         }
     }
 
@@ -29,7 +31,7 @@ public class ReservationExceptions {
      * 잔액 부족 예외
      */
     public static class InsufficientBalanceException extends RuntimeException {
-        public InsufficientBalanceException(String userId) {
+        public InsufficientBalanceException(UUID userId) {
             super(String.format("사용자 %s의 잔액이 부족합니다.", userId));
         }
     }

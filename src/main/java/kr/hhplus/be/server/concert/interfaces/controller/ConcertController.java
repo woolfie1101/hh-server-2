@@ -1,62 +1,55 @@
 package kr.hhplus.be.server.concert.interfaces.controller;
 
-import kr.hhplus.be.server.concert.application.dto.ConcertBookingStatus;
-import kr.hhplus.be.server.concert.application.service.ConcertService;
-import kr.hhplus.be.server.concert.domain.model.Concert;
+import kr.hhplus.be.server.concert.application.usecase.ConcertUseCase;
+import kr.hhplus.be.server.concert.application.dto.ConcertDto;
+import kr.hhplus.be.server.concert.interfaces.dto.ConcertResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.time.LocalDateTime;
+
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/concerts")
+@RequiredArgsConstructor
 public class ConcertController {
 
-    private final ConcertService concertService;
-
-    public ConcertController(ConcertService concertService) {
-        this.concertService = concertService;
-    }
-
-    @GetMapping("/{concertId}")
-    public ResponseEntity<Concert> getConcert(@PathVariable Long concertId) {
-        Concert concert = concertService.getConcert(concertId);
-        return ResponseEntity.ok(concert);
-    }
+    private final ConcertUseCase concertUseCase;
 
     @GetMapping
-    public ResponseEntity<List<Concert>> getAllConcerts() {
-        List<Concert> concerts = concertService.getAllConcerts();
-        return ResponseEntity.ok(concerts);
+    public ResponseEntity<List<ConcertResponse>> getAllConcerts() {
+        List<ConcertDto> concerts = concertUseCase.getAllConcerts();
+        return ResponseEntity.ok(ConcertResponse.from(concerts));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ConcertResponse> getConcert(@PathVariable UUID id) {
+        ConcertDto concert = concertUseCase.getConcert(id);
+        return ResponseEntity.ok(ConcertResponse.from(concert));
     }
 
     @GetMapping("/artist/{artist}")
-    public ResponseEntity<List<Concert>> getConcertsByArtist(@PathVariable String artist) {
-        List<Concert> concerts = concertService.getConcertsByArtist(artist);
-        return ResponseEntity.ok(concerts);
+    public ResponseEntity<List<ConcertResponse>> getConcertsByArtist(@PathVariable String artist) {
+        List<ConcertDto> concerts = concertUseCase.getConcertsByArtist(artist);
+        return ResponseEntity.ok(ConcertResponse.from(concerts));
     }
 
     @GetMapping("/available")
-    public ResponseEntity<List<Concert>> getAvailableConcerts() {
-        List<Concert> concerts = concertService.getAvailableConcerts();
-        return ResponseEntity.ok(concerts);
+    public ResponseEntity<List<ConcertResponse>> getAvailableConcerts() {
+        List<ConcertDto> concerts = concertUseCase.getAvailableConcerts();
+        return ResponseEntity.ok(ConcertResponse.from(concerts));
     }
 
     @GetMapping("/upcoming")
-    public ResponseEntity<List<Concert>> getUpcomingConcerts() {
-        List<Concert> concerts = concertService.getUpcomingConcerts();
-        return ResponseEntity.ok(concerts);
+    public ResponseEntity<List<ConcertResponse>> getUpcomingConcerts() {
+        List<ConcertDto> concerts = concertUseCase.getUpcomingConcerts();
+        return ResponseEntity.ok(ConcertResponse.from(concerts));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Concert>> searchConcerts(@RequestParam String keyword) {
-        List<Concert> concerts = concertService.searchConcertsByTitle(keyword);
-        return ResponseEntity.ok(concerts);
-    }
-
-    @GetMapping("/{concertId}/status")
-    public ResponseEntity<ConcertBookingStatus> getBookingStatus(@PathVariable Long concertId) {
-        ConcertBookingStatus status = concertService.getBookingStatus(concertId);
-        return ResponseEntity.ok(status);
+    public ResponseEntity<List<ConcertResponse>> searchConcerts(@RequestParam String keyword) {
+        List<ConcertDto> concerts = concertUseCase.searchConcerts(keyword);
+        return ResponseEntity.ok(ConcertResponse.from(concerts));
     }
 } 

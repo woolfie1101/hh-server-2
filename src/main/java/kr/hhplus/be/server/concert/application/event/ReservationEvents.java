@@ -1,7 +1,8 @@
 package kr.hhplus.be.server.concert.application.event;
 
 import kr.hhplus.be.server.concert.domain.model.Payment;
-import kr.hhplus.be.server.concert.domain.model.Reservation;
+import kr.hhplus.be.server.model.Reservation;
+
 import java.time.LocalDateTime;
 
 /**

@@ -1,110 +1,98 @@
 package kr.hhplus.be.server.concert.infrastructure.persistence.jpa;
 
+import kr.hhplus.be.server.concert.domain.model.Seat;
+import kr.hhplus.be.server.concert.domain.model.ReservationStatus;
+import kr.hhplus.be.server.concert.domain.repository.SeatRepository;
 import kr.hhplus.be.server.concert.infrastructure.persistence.entity.SeatEntity;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import kr.hhplus.be.server.concert.infrastructure.persistence.repository.SeatJpaRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
-/**
- * Seat Spring Data JPA Repository
- * - JPA 전용 데이터 접근 인터페이스
- * - SeatRepositoryImpl에서 내부적으로 사용
- */
-public interface SpringSeatJpa extends JpaRepository<SeatEntity, Long> {
+@Repository
+@RequiredArgsConstructor
+public class SpringSeatJpa implements SeatRepository {
 
-    /**
-     * 콘서트별 모든 좌석 조회
-     */
-    List<SeatEntity> findByConcertId(Long concertId);
+    private final SeatJpaRepository seatJpaRepository;
 
-    /**
-     * 콘서트별 예약 가능한 좌석 조회
-     */
-    @Query("SELECT s FROM SeatEntity s WHERE s.concertId = :concertId AND s.reservedBy IS NULL")
-    List<SeatEntity> findAvailableSeatsByConcertId(@Param("concertId") Long concertId);
+    @Override
+    public Seat save(Seat seat) {
+        SeatEntity entity = SeatEntity.fromDomain(seat);
+        SeatEntity savedEntity = seatJpaRepository.save(entity);
+        return savedEntity.toDomain();
+    }
 
-    /**
-     * 특정 사용자가 예약한 좌석 조회
-     */
-    List<SeatEntity> findByReservedBy(String userId);
+    @Override
+    public Optional<Seat> findById(UUID id) {
+        return seatJpaRepository.findById(id)
+            .map(SeatEntity::toDomain);
+    }
 
-    /**
-     * 만료된 예약 좌석 조회 (자동 해제 대상)
-     * 예약 시간으로부터 5분이 지난 좌석들
-     */
-    @Query("SELECT s FROM SeatEntity s WHERE s.reservedBy IS NOT NULL " +
-        "AND s.reservedAt < :cutoffTime")
-    List<SeatEntity> findExpiredReservations(@Param("cutoffTime") LocalDateTime cutoffTime);
+    @Override
+    public List<Seat> findByConcertId(UUID concertId) {
+        return seatJpaRepository.findByConcertId(concertId).stream()
+            .map(SeatEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 콘서트와 좌석번호로 특정 좌석 조회
-     */
-    Optional<SeatEntity> findByConcertIdAndSeatNumber(Long concertId, String seatNumber);
+    @Override
+    public List<Seat> findByStatus(ReservationStatus status) {
+        return seatJpaRepository.findByStatus(status).stream()
+            .map(SeatEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 가격 범위로 좌석 조회
-     */
-    List<SeatEntity> findByPriceBetween(BigDecimal minPrice, BigDecimal maxPrice);
+    @Override
+    public List<Seat> findByConcertIdAndStatus(UUID concertId, ReservationStatus status) {
+        return seatJpaRepository.findByConcertIdAndStatus(concertId, status).stream()
+            .map(SeatEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 콘서트별 예약 가능한 좌석 수 조회
-     */
-    @Query("SELECT COUNT(s) FROM SeatEntity s WHERE s.concertId = :concertId AND s.reservedBy IS NULL")
-    long countAvailableSeatsByConcertId(@Param("concertId") Long concertId);
+    @Override
+    public List<Seat> findReservedSeats(UUID concertId) {
+        return seatJpaRepository.findByConcertIdAndStatus(concertId, ReservationStatus.PENDING).stream()
+            .map(SeatEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 콘서트별 예약된 좌석 수 조회
-     */
-    @Query("SELECT COUNT(s) FROM SeatEntity s WHERE s.concertId = :concertId AND s.reservedBy IS NOT NULL")
-    long countReservedSeatsByConcertId(@Param("concertId") Long concertId);
+    @Override
+    public List<Seat> findByReservedBy(UUID userId) {
+        return List.of();
+    }
 
-    /**
-     * 콘서트별 가격대별 좌석 조회
-     */
-    List<SeatEntity> findByConcertIdAndPrice(Long concertId, BigDecimal price);
+    @Override
+    public List<Seat> findAvailableSeats(UUID concertId) {
+        return seatJpaRepository.findByConcertIdAndStatus(concertId, ReservationStatus.AVAILABLE).stream()
+            .map(SeatEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 콘서트별 가격 범위로 좌석 조회
-     */
-    List<SeatEntity> findByConcertIdAndPriceBetween(Long concertId, BigDecimal minPrice, BigDecimal maxPrice);
+    @Override
+    public boolean existsBySeatIdAndStatus(UUID seatId, ReservationStatus status) {
+        return seatJpaRepository.existsByIdAndStatus(seatId, status);
+    }
 
-    /**
-     * 좌석 번호 리스트로 좌석 조회
-     */
-    List<SeatEntity> findByConcertIdAndSeatNumberIn(Long concertId, List<String> seatNumbers);
+    @Override
+    public long countByConcertId(UUID concertId) {
+        return seatJpaRepository.countByConcertId(concertId);
+    }
 
-    /**
-     * 특정 시간 이후에 예약된 좌석 조회
-     */
-    List<SeatEntity> findByReservedAtAfter(LocalDateTime dateTime);
+    @Override
+    public long countByConcertIdAndStatus(UUID concertId, ReservationStatus status) {
+        return seatJpaRepository.countByConcertIdAndStatus(concertId, status);
+    }
 
-    /**
-     * 콘서트별 좌석 가격 통계
-     */
-    @Query("SELECT MIN(s.price), MAX(s.price), AVG(s.price) FROM SeatEntity s WHERE s.concertId = :concertId")
-    List<Object[]> findPriceStatsByConcertId(@Param("concertId") Long concertId);
+    @Override
+    public boolean existsByConcertIdAndSeatNumber(UUID concertId, String seatNumber) {
+        return false;
+    }
 
-    /**
-     * 콘서트별 좌석 번호 패턴으로 조회 (예: A로 시작하는 좌석)
-     */
-    @Query("SELECT s FROM SeatEntity s WHERE s.concertId = :concertId AND s.seatNumber LIKE :pattern")
-    List<SeatEntity> findByConcertIdAndSeatNumberPattern(@Param("concertId") Long concertId,
-        @Param("pattern") String pattern);
-
-    /**
-     * 여러 콘서트의 좌석 조회
-     */
-    List<SeatEntity> findByConcertIdIn(List<Long> concertIds);
-
-    /**
-     * 콘서트별 좌석 예약 상태 통계
-     */
-    @Query("SELECT s.concertId, COUNT(s), COUNT(CASE WHEN s.reservedBy IS NOT NULL THEN 1 END) " +
-        "FROM SeatEntity s WHERE s.concertId IN :concertIds " +
-        "GROUP BY s.concertId")
-    List<Object[]> findReservationStatsByConcertIds(@Param("concertIds") List<Long> concertIds);
-}
+    @Override
+    public void deleteById(UUID id) {
+        seatJpaRepository.deleteById(id);
+    }
+} 

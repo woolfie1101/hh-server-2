@@ -1,236 +1,92 @@
 package kr.hhplus.be.server.concert.domain.model;
 
-import java.math.BigDecimal;
+import lombok.Getter;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
- * 좌석 도메인 모델 (순수 POJO)
- * - 좌석 정보와 예약 상태 관리
+ * 좌석 도메인 모델
  */
+@Getter
 public class Seat {
+    private final UUID id;
+    private final UUID concertId;
+    private final String seatNumber;
+    private final int price;
+    private ReservationStatus status;
+    private UUID reservedBy;
+    private final LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
-    private static final int RESERVATION_TIMEOUT_MINUTES = 5; // 예약 만료 시간 (5분)
-
-    private Long id;
-    private Long concertId;
-    private String seatNumber;
-    private BigDecimal price;
-    private String reservedBy;      // 예약한 사용자 ID
-    private LocalDateTime reservedAt; // 예약 시간
-
-    // 기본 생성자 (JPA용)
-    protected Seat() {}
-
-    // 비즈니스 생성자
-    public Seat(Long concertId, String seatNumber, BigDecimal price) {
-        validateConcertId(concertId);
-        validateSeatNumber(seatNumber);
-        validatePrice(price);
-
+    public Seat(UUID id, UUID concertId, String seatNumber, int price, ReservationStatus status, UUID reservedBy,
+        LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = id;
         this.concertId = concertId;
         this.seatNumber = seatNumber;
         this.price = price;
-        this.reservedBy = null;
-        this.reservedAt = null;
+        this.status = status;
+        this.reservedBy = reservedBy;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
-    /**
-     * 좌석 예약
-     * @param userId 예약할 사용자 ID
-     * @return 예약 성공 여부
-     */
-    public boolean reserve(String userId) {
-        validateUserId(userId);
+    public static Seat create(UUID concertId, String seatNumber, int price) {
+        return new Seat(
+            UUID.randomUUID(),
+            concertId,
+            seatNumber,
+            price,
+            ReservationStatus.AVAILABLE,
+            null,
+            LocalDateTime.now(),
+            LocalDateTime.now()
+        );
+    }
 
-        // 만료된 예약이 있다면 먼저 해제
-        releaseExpiredReservation();
-
-        if (!isAvailable()) {
-            return false;
+    public void reserve(UUID userId) {
+        if (status != ReservationStatus.AVAILABLE) {
+            throw new IllegalStateException("이미 예약된 좌석입니다.");
         }
-
+        this.status = ReservationStatus.PENDING;
         this.reservedBy = userId;
-        this.reservedAt = LocalDateTime.now();
-        return true;
+        this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * 예약 취소
-     * @param userId 취소를 요청한 사용자 ID
-     * @return 취소 성공 여부
-     */
-    public boolean cancelReservation(String userId) {
-        if (!isReservedBy(userId)) {
-            return false;
+    public void complete() {
+        if (status != ReservationStatus.PENDING) {
+            throw new IllegalStateException("완료할 수 없는 좌석 상태입니다.");
         }
+        this.status = ReservationStatus.COMPLETED;
+        this.updatedAt = LocalDateTime.now();
+    }
 
+    public void cancel() {
+        if (status != ReservationStatus.PENDING) {
+            throw new IllegalStateException("취소할 수 없는 좌석 상태입니다.");
+        }
+        this.status = ReservationStatus.AVAILABLE;
         this.reservedBy = null;
-        this.reservedAt = null;
-        return true;
+        this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * 좌석이 예약 가능한지 확인
-     */
+    public boolean isReservedBy(UUID userId) {
+        return status == ReservationStatus.PENDING && userId.equals(reservedBy);
+    }
+
+    public void expire() {
+        if (status != ReservationStatus.PENDING) {
+            throw new IllegalStateException("예약된 좌석이 아닙니다.");
+        }
+        this.status = ReservationStatus.AVAILABLE;
+        this.reservedBy = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public boolean isAvailable() {
-        // 만료된 예약이 있다면 자동으로 해제하고 사용 가능으로 처리
-        releaseExpiredReservation();
-        return reservedBy == null;
+        return status == ReservationStatus.AVAILABLE;
     }
 
-    /**
-     * 특정 사용자가 예약한 좌석인지 확인
-     */
-    public boolean isReservedBy(String userId) {
-        if (userId == null || isAvailable()) {
-            return false;
-        }
-        return reservedBy.equals(userId);
+    public boolean isReserved() {
+        return status == ReservationStatus.PENDING;
     }
-
-    /**
-     * 예약 만료 시간 계산
-     */
-    public LocalDateTime getReservationExpirationTime() {
-        if (reservedAt == null) {
-            return null;
-        }
-        return reservedAt.plusMinutes(RESERVATION_TIMEOUT_MINUTES);
-    }
-
-    /**
-     * 예약이 만료되었는지 확인
-     */
-    public boolean isReservationExpired() {
-        if (reservedAt == null) {
-            return false;
-        }
-        return LocalDateTime.now().isAfter(getReservationExpirationTime());
-    }
-
-    /**
-     * 만료된 예약 자동 해제
-     */
-    public void releaseExpiredReservation() {
-        if (isReservationExpired()) {
-            this.reservedBy = null;
-            this.reservedAt = null;
-        }
-    }
-
-    /**
-     * 예약 남은 시간 (분 단위)
-     */
-    public long getRemainingMinutes() {
-        if (reservedAt == null) {
-            return 0;
-        }
-
-        LocalDateTime expirationTime = getReservationExpirationTime();
-        LocalDateTime now = LocalDateTime.now();
-
-        if (now.isAfter(expirationTime)) {
-            return 0;
-        }
-
-        return java.time.Duration.between(now, expirationTime).toMinutes();
-    }
-
-    /**
-     * 좌석 상태 요약 정보
-     */
-    public String getStatusSummary() {
-        if (isAvailable()) {
-            return "예약 가능";
-        }
-
-        if (isReservationExpired()) {
-            return "예약 만료 (자동 해제됨)";
-        }
-
-        long remainingMinutes = getRemainingMinutes();
-        return String.format("예약됨 (남은 시간: %d분)", remainingMinutes);
-    }
-
-    // ID 할당 (Repository에서 사용)
-    public void assignId(Long id) {
-        this.id = id;
-    }
-
-    // Getters
-    public Long getId() {
-        return id;
-    }
-
-    public Long getConcertId() {
-        return concertId;
-    }
-
-    public String getSeatNumber() {
-        return seatNumber;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public String getReservedBy() {
-        return reservedBy;
-    }
-
-    public LocalDateTime getReservedAt() {
-        return reservedAt;
-    }
-
-    // 검증 메서드들
-    private void validateConcertId(Long concertId) {
-        if (concertId == null) {
-            throw new IllegalArgumentException("콘서트 ID는 필수입니다.");
-        }
-    }
-
-    private void validateSeatNumber(String seatNumber) {
-        if (seatNumber == null || seatNumber.trim().isEmpty()) {
-            throw new IllegalArgumentException("좌석 번호는 필수입니다.");
-        }
-    }
-
-    private void validatePrice(BigDecimal price) {
-        if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("좌석 가격은 0 이상이어야 합니다.");
-        }
-    }
-
-    private void validateUserId(String userId) {
-        if (userId == null || userId.trim().isEmpty()) {
-            throw new IllegalArgumentException("사용자 ID는 필수입니다.");
-        }
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-
-        Seat seat = (Seat) obj;
-        return id != null ? id.equals(seat.id) : seat.id == null;
-    }
-
-    @Override
-    public int hashCode() {
-        return id != null ? id.hashCode() : 0;
-    }
-
-    @Override
-    public String toString() {
-        return "Seat{" +
-            "id=" + id +
-            ", concertId=" + concertId +
-            ", seatNumber='" + seatNumber + '\'' +
-            ", price=" + price +
-            ", reservedBy='" + reservedBy + '\'' +
-            ", reservedAt=" + reservedAt +
-            ", available=" + isAvailable() +
-            '}';
-    }
-}
+} 

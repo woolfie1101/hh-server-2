@@ -1,105 +1,64 @@
 package kr.hhplus.be.server.concert.domain.model;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
- * 콘서트 도메인 모델 (순수 POJO)
- * - 콘서트 정보와 좌석 예약 관리
+ * 콘서트 도메인 모델
  */
 public class Concert {
-
-    private Long id;
-    private String title;
-    private String artist;
-    private LocalDateTime concertDate;
-    private int totalSeats;
+    private UUID id;
+    private final String title;
+    private final String artist;
+    private final LocalDateTime concertDate;
+    private final int totalSeats;
     private int reservedSeats;
+    private final BigDecimal price;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
-    // 기본 생성자 (JPA용)
-    protected Concert() {}
-
-    // 비즈니스 생성자
-    public Concert(String title, String artist, LocalDateTime concertDate, int totalSeats) {
-        validateTitle(title);
-        validateArtist(artist);
-        validateConcertDate(concertDate);
-        validateTotalSeats(totalSeats);
-
+    public Concert(String title, String artist, LocalDateTime concertDate, int totalSeats, BigDecimal price) {
         this.title = title;
         this.artist = artist;
         this.concertDate = concertDate;
         this.totalSeats = totalSeats;
-        this.reservedSeats = 0; // 초기에는 예약된 좌석 없음
+        this.price = price;
+        this.reservedSeats = 0;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * 좌석 예약
-     * @return 예약 성공 여부
-     */
-    public boolean reserveSeat() {
-        validateConcertNotPassed();
-
-        if (!hasAvailableSeats()) {
-            return false;
+    public void reserveSeats(int count) {
+        if (getAvailableSeats() < count) {
+            throw new IllegalStateException("예약 가능한 좌석이 부족합니다.");
         }
-        this.reservedSeats++;
-        return true;
+        this.reservedSeats += count;
+        this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * 예약 취소
-     */
-    public void cancelReservation() {
-        validateConcertNotPassed();
-
-        if (reservedSeats <= 0) {
-            throw new IllegalArgumentException("취소할 예약이 없습니다.");
+    public void cancelSeats(int count) {
+        if (this.reservedSeats < count) {
+            throw new IllegalStateException("취소할 좌석 수가 예약된 좌석 수보다 많습니다.");
         }
-        this.reservedSeats--;
+        this.reservedSeats -= count;
+        this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * 예약 가능한 좌석이 있는지 확인
-     */
-    public boolean hasAvailableSeats() {
-        return getAvailableSeats() > 0;
-    }
-
-    /**
-     * 현재 예약 가능한 좌석 수
-     */
     public int getAvailableSeats() {
         return totalSeats - reservedSeats;
     }
 
-    /**
-     * 콘서트가 매진되었는지 확인
-     */
     public boolean isSoldOut() {
-        return !hasAvailableSeats();
+        return reservedSeats >= totalSeats;
     }
 
-    /**
-     * 콘서트가 이미 지났는지 확인
-     */
-    public boolean isPassed() {
-        return concertDate.isBefore(LocalDateTime.now());
-    }
-
-    /**
-     * 예약/취소 가능한 상태인지 확인
-     */
     public boolean isBookingAvailable() {
-        return !isPassed() && hasAvailableSeats();
-    }
-
-    // ID 할당 (Repository에서 사용)
-    public void assignId(Long id) {
-        this.id = id;
+        return !isSoldOut() && concertDate.isAfter(LocalDateTime.now());
     }
 
     // Getters
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
@@ -123,64 +82,32 @@ public class Concert {
         return reservedSeats;
     }
 
-    // 검증 메서드들
-    private void validateTitle(String title) {
-        if (title == null || title.trim().isEmpty()) {
-            throw new IllegalArgumentException("콘서트 제목은 필수입니다.");
-        }
+    public BigDecimal getPrice() {
+        return price;
     }
 
-    private void validateArtist(String artist) {
-        if (artist == null || artist.trim().isEmpty()) {
-            throw new IllegalArgumentException("아티스트명은 필수입니다.");
-        }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 
-    private void validateConcertDate(LocalDateTime concertDate) {
-        if (concertDate == null) {
-            throw new IllegalArgumentException("콘서트 날짜는 필수입니다.");
-        }
-        if (concertDate.isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("콘서트 날짜는 현재 시간 이후여야 합니다.");
-        }
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
     }
 
-    private void validateTotalSeats(int totalSeats) {
-        if (totalSeats <= 0) {
-            throw new IllegalArgumentException("총 좌석 수는 1 이상이어야 합니다.");
-        }
+    // Setters
+    public void setId(UUID id) {
+        this.id = id;
     }
 
-    private void validateConcertNotPassed() {
-        if (isPassed()) {
-            throw new IllegalArgumentException("이미 지난 콘서트입니다.");
-        }
+    public void setReservedSeats(int reservedSeats) {
+        this.reservedSeats = reservedSeats;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-
-        Concert concert = (Concert) obj;
-        return id != null ? id.equals(concert.id) : concert.id == null;
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
-    @Override
-    public int hashCode() {
-        return id != null ? id.hashCode() : 0;
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
-
-    @Override
-    public String toString() {
-        return "Concert{" +
-            "id=" + id +
-            ", title='" + title + '\'' +
-            ", artist='" + artist + '\'' +
-            ", concertDate=" + concertDate +
-            ", totalSeats=" + totalSeats +
-            ", reservedSeats=" + reservedSeats +
-            ", availableSeats=" + getAvailableSeats() +
-            '}';
-    }
-}
+} 

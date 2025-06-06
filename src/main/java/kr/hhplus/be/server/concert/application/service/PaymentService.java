@@ -1,6 +1,6 @@
 package kr.hhplus.be.server.concert.application.service;
 
-import kr.hhplus.be.server.concert.domain.model.Payment;
+import kr.hhplus.be.server.model.Payment;
 
 /**
  * PaymentService 인터페이스

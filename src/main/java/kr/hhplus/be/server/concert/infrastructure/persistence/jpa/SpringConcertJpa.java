@@ -4,15 +4,17 @@ import kr.hhplus.be.server.concert.infrastructure.persistence.entity.ConcertEnti
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
- * Concert Spring Data JPA Repository
- * - JPA 전용 데이터 접근 인터페이스
- * - ConcertRepositoryImpl에서 내부적으로 사용
+ * 콘서트 Spring Data JPA Repository
  */
-public interface SpringConcertJpa extends JpaRepository<ConcertEntity, Long> {
+@Repository
+public interface SpringConcertJpa extends JpaRepository<ConcertEntity, UUID> {
 
     /**
      * 아티스트명으로 콘서트 조회
@@ -45,4 +47,14 @@ public interface SpringConcertJpa extends JpaRepository<ConcertEntity, Long> {
      * 좌석 수 범위로 콘서트 조회
      */
     List<ConcertEntity> findByTotalSeatsBetween(int minSeats, int maxSeats);
+
+    @Query("SELECT c FROM ConcertEntity c WHERE LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    List<ConcertEntity> searchByTitle(@Param("keyword") String keyword);
+
+    @Query("SELECT c FROM ConcertEntity c WHERE c.price BETWEEN :minPrice AND :maxPrice")
+    List<ConcertEntity> findByPriceRange(@Param("minPrice") BigDecimal minPrice, @Param("maxPrice") BigDecimal maxPrice);
+
+    List<ConcertEntity> findByConcertDateAfter(LocalDateTime date);
+
+    List<ConcertEntity> findByTitleContainingOrArtistContaining(String title, String artist);
 }

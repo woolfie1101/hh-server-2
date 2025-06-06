@@ -1,6 +1,6 @@
 package kr.hhplus.be.server.concert.application.event;
 
-import kr.hhplus.be.server.concert.domain.model.Seat;
+import kr.hhplus.be.server.model.Seat;
 
 /**
  * 좌석 관련 이벤트 클래스들

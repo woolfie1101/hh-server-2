@@ -1,113 +1,121 @@
 package kr.hhplus.be.server.concert.infrastructure.persistence.jpa;
 
+import kr.hhplus.be.server.concert.domain.model.Reservation;
 import kr.hhplus.be.server.concert.domain.model.ReservationStatus;
+import kr.hhplus.be.server.concert.domain.repository.ReservationRepository;
 import kr.hhplus.be.server.concert.infrastructure.persistence.entity.ReservationEntity;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
-/**
- * Reservation Spring Data JPA Repository
- * - JPA 전용 데이터 접근 인터페이스
- * - ReservationRepositoryImpl에서 내부적으로 사용
- */
-public interface SpringReservationJpa extends JpaRepository<ReservationEntity, Long> {
+@Repository
+@RequiredArgsConstructor
+public class SpringReservationJpa implements ReservationRepository {
 
-    /**
-     * 사용자별 예약 조회
-     */
-    List<ReservationEntity> findByUserId(String userId);
+    private final ReservationJpaRepository reservationJpaRepository;
 
-    /**
-     * 콘서트별 예약 조회
-     */
-    List<ReservationEntity> findByConcertId(Long concertId);
+    @Override
+    public Reservation save(Reservation reservation) {
+        ReservationEntity entity = ReservationEntity.fromDomain(reservation);
+        return reservationJpaRepository.save(entity).toDomain();
+    }
 
-    /**
-     * 좌석별 예약 조회 (좌석당 최대 1개 예약)
-     */
-    Optional<ReservationEntity> findBySeatId(Long seatId);
+    @Override
+    public Optional<Reservation> findById(UUID id) {
+        return reservationJpaRepository.findById(id)
+            .map(ReservationEntity::toDomain);
+    }
 
-    /**
-     * 상태별 예약 조회
-     */
-    List<ReservationEntity> findByStatus(ReservationStatus status);
+    @Override
+    public List<Reservation> findByUserId(UUID userId) {
+        return reservationJpaRepository.findByUserId(userId).stream()
+            .map(ReservationEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 만료된 예약 조회 (자동 처리 대상)
-     * TEMPORARY 상태이면서 만료 시간이 지난 예약들
-     */
-    @Query("SELECT r FROM ReservationEntity r WHERE r.status = 'TEMPORARY' AND r.expiresAt < :cutoffTime")
-    List<ReservationEntity> findExpiredReservations(@Param("cutoffTime") LocalDateTime cutoffTime);
+    @Override
+    public List<Reservation> findByConcertId(UUID concertId) {
+        return reservationJpaRepository.findByConcertId(concertId).stream()
+            .map(ReservationEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 사용자와 콘서트로 예약 조회
-     */
-    List<ReservationEntity> findByUserIdAndConcertId(String userId, Long concertId);
+    @Override
+    public List<Reservation> findBySeatId(UUID seatId) {
+        return reservationJpaRepository.findBySeatId(seatId).stream()
+            .map(ReservationEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 날짜 범위별 예약 조회
-     */
-    List<ReservationEntity> findByReservedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
+    @Override
+    public List<Reservation> findByStatus(ReservationStatus status) {
+        return reservationJpaRepository.findByStatus(status).stream()
+            .map(ReservationEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 사용자의 활성 예약 조회 (TEMPORARY, CONFIRMED 상태)
-     */
-    @Query("SELECT r FROM ReservationEntity r WHERE r.userId = :userId AND r.status IN ('TEMPORARY', 'CONFIRMED')")
-    List<ReservationEntity> findActiveReservationsByUserId(@Param("userId") String userId);
+    @Override
+    public List<Reservation> findByUserIdAndStatus(UUID userId, ReservationStatus status) {
+        return reservationJpaRepository.findByUserIdAndStatus(userId, status).stream()
+            .map(ReservationEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 콘서트별 예약 수 조회
-     */
-    long countByConcertId(Long concertId);
+    @Override
+    public List<Reservation> findByConcertIdAndStatus(UUID concertId, ReservationStatus status) {
+        return reservationJpaRepository.findByConcertIdAndStatus(concertId, status).stream()
+            .map(ReservationEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 콘서트별 상태별 예약 수 조회
-     */
-    long countByConcertIdAndStatus(Long concertId, ReservationStatus status);
+    @Override
+    public List<Reservation> findBySeatIdAndStatus(UUID seatId, ReservationStatus status) {
+        return reservationJpaRepository.findBySeatIdAndStatus(seatId, status).stream()
+            .map(ReservationEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 특정 시간 이후의 예약 조회
-     */
-    List<ReservationEntity> findByReservedAtAfter(LocalDateTime dateTime);
+    @Override
+    public List<Reservation> findExpiredReservations(LocalDateTime cutoffTime) {
+        return reservationJpaRepository.findByStatusAndCreatedAtBefore(ReservationStatus.PENDING, cutoffTime).stream()
+            .map(ReservationEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 확정된 예약 조회 (CONFIRMED 상태)
-     */
-    @Query("SELECT r FROM ReservationEntity r WHERE r.status = 'CONFIRMED' ORDER BY r.confirmedAt DESC")
-    List<ReservationEntity> findConfirmedReservations();
+    @Override
+    public long countByConcertId(UUID concertId) {
+        return reservationJpaRepository.countByConcertId(concertId);
+    }
 
-    /**
-     * 사용자별 확정된 예약 조회
-     */
-    List<ReservationEntity> findByUserIdAndStatus(String userId, ReservationStatus status);
+    // @Override
+    // public long countByConcertIdAndStatus(UUID concertId, ReservationStatus status) {
+    //     return reservationJpaRepository.countByConcertIdAndStatus(concertId, status);
+    // }
 
-    /**
-     * 콘서트별 확정된 예약 조회
-     */
-    List<ReservationEntity> findByConcertIdAndStatus(Long concertId, ReservationStatus status);
+    @Override
+    public List<Reservation> findActiveReservationsByUserId(UUID userId) {
+        return reservationJpaRepository.findByUserIdAndStatus(userId, ReservationStatus.PENDING).stream()
+            .map(ReservationEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 좌석 번호로 예약 조회
-     */
-    Optional<ReservationEntity> findByConcertIdAndSeatNumber(Long concertId, String seatNumber);
+    @Override
+    public List<Reservation> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate) {
+        return reservationJpaRepository.findByCreatedAtBetween(startDate, endDate).stream()
+            .map(ReservationEntity::toDomain)
+            .collect(Collectors.toList());
+    }
 
-    /**
-     * 만료 시간이 임박한 예약 조회 (알림용)
-     */
-    @Query("SELECT r FROM ReservationEntity r WHERE r.status = 'TEMPORARY' " +
-        "AND r.expiresAt BETWEEN :now AND :nearFuture")
-    List<ReservationEntity> findReservationsExpiringSoon(@Param("now") LocalDateTime now,
-        @Param("nearFuture") LocalDateTime nearFuture);
-
-    /**
-     * 특정 날짜의 예약 통계
-     */
-    @Query("SELECT r.status, COUNT(r) FROM ReservationEntity r " +
-        "WHERE DATE(r.reservedAt) = DATE(:date) " +
-        "GROUP BY r.status")
-    List<Object[]> findReservationStatsByDate(@Param("date") LocalDateTime date);
-}
+    @Override
+    public boolean existsBySeatIdAndStatus(UUID seatId, ReservationStatus status) {
+        return reservationJpaRepository.existsBySeatIdAndStatus(seatId, status);
+    }
+} 

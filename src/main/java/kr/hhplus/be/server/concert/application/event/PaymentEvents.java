@@ -1,7 +1,7 @@
 package kr.hhplus.be.server.concert.application.event;
 
-import kr.hhplus.be.server.concert.domain.model.Payment;
-import kr.hhplus.be.server.concert.domain.model.Reservation;
+import kr.hhplus.be.server.model.Payment;
+import kr.hhplus.be.server.model.Reservation;
 
 /**
  * 결제 관련 이벤트 클래스들
