@@ -36,7 +36,7 @@ public class ReservationService {
         }
 
         Reservation reservation = Reservation.create(userId, seat.getConcertId(), seatId);
-        seat.reserve();
+        seat.reserve(userId, reservation.getId());
         
         return reservationRepository.save(reservation);
     }
